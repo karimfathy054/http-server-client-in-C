@@ -164,7 +164,7 @@ void post_request(char* file_path,int socket_fd){
     int head_of_req=0;
     while((file_read_bytes = fread(file_reader_buffer,sizeof(char),BUFFER_SIZE,fp))>0){
         if(head_of_req==0){
-            sprintf(out_buffer,"POST %s HTTP/1.1\r\n\r\n\n%s",file_path,file_reader_buffer);//headers
+            sprintf(out_buffer,"POST %s HTTP/1.1\r\n{headers}\r\n%s",file_path,file_reader_buffer);//headers
             head_of_req=1;
         }else{
             memcpy(out_buffer,file_reader_buffer,BUFFER_SIZE);

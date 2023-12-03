@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+
 int main(int argc, char const *argv[])
 {
     if (argc != 2)
@@ -44,6 +45,16 @@ int main(int argc, char const *argv[])
     if(new_socket>0){
     printf("connection accepted");
     }
-
+    //recieve requests from client
+    
+    //parse requests
+        //print out the request + headers(i.e. everything before the message body )
+    //if GET request
+        //reply with http 200 OK and the file 
+        //reply with http 404 NOTFOUND if there is no file
+    //if POST request
+        //exclude headers
     return 0;
 }
+
+
