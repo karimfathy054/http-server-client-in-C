@@ -19,7 +19,7 @@ char file_reader_buffer[BUFFER_SIZE];
 void read_commands(char *commands_file_path, int socket_fd);
 void execute_command(char *command, int socket_fd);
 void send_request(char *method,char *file_name, int socket_fd);
-int recieve_response(int socket_fd);
+int recieve_server_response(int socket_fd);
 void get_request(char *file_name, int socket_fd);
 void post_request(char *file_path, int socket_fd);
 void send_message_body(char *file_path,int socket_fd);
@@ -58,7 +58,7 @@ int main(int argc, char const *argv[])
 
     return 0;
 }
-
+//get filename http/1.1\r\n
 void send_request(char *method,char *file_name, int socket_fd){
     sprintf(out_buffer, "%s %s HTTP/1.1\r\n\r\n",method, file_name);
     while (send(socket_fd, out_buffer, strlen(out_buffer), 0) == -1)
@@ -71,8 +71,9 @@ void send_request(char *method,char *file_name, int socket_fd){
 void get_request(char *file_name, int socket_fd)
 {
     send_request("GET",file_name,socket_fd);
-    int status = recieve_response(socket_fd);
-    if(status==true){
+    int status = recieve_server_response(socket_fd);
+
+    if(status == true){
         get_message_body(file_name,socket_fd);
     }
     else if(status == false){
@@ -83,7 +84,7 @@ void get_request(char *file_name, int socket_fd)
     }
 }
 
-int recieve_response(int socket_fd)
+int recieve_server_response(int socket_fd)
 {
     // the server will either send:
     // HTTP/1.1 200 OK
@@ -91,14 +92,18 @@ int recieve_response(int socket_fd)
     // HTTP/1.1 404 NOT_FOUND
     int status_code = 0;
     char server_message[1024] = {0};
-    if (recv(socket_fd, server_message, sizeof(server_message), 0) == -1)
+    if (read(socket_fd, server_message, BUFFER_SIZE) == -1)
     {
         perror("can't recieve response");
         return -1;
     }
+    printf("server: %s",server_message);
     char http[10] ={0};
+    char code[10] = {0};
     char message[10] = {0};
-    sscanf(server_message,"%s %d %s",http,&status_code,message);
+
+    sscanf(server_message,"%s %s %s",http,code,message);
+    status_code = atoi(code);
     if (status_code == 200)
     {
         printf("getting the file from server ...\n");
@@ -123,7 +128,7 @@ void get_message_body(char *file_name, int socket_fd)
     int bytes_recieved = 0;
     int bytes_wrote = 0;
     memset(in_buffer,0,BUFFER_SIZE);
-    while ((bytes_recieved = recv(socket_fd, in_buffer, BUFFER_SIZE, 0)) > 0)
+    while ((bytes_recieved = recv(socket_fd, in_buffer, BUFFER_SIZE-1, 0)) > 0)
     {
         if(strcmp(in_buffer,"\r\n") == 0){ //server terminating file
             break;
@@ -133,10 +138,9 @@ void get_message_body(char *file_name, int socket_fd)
         {
             perror("can't write in file");
         }
-        if (bytes_wrote < bytes_recieved)
-        {
-            perror("something went wrong in writing file");
-        }
+        // if (bytes_wrote < bytes_recieved)
+        // {
+        //     perror("something went wrong in writing file");
         memset(in_buffer,0,BUFFER_SIZE);
         if (bytes_recieved < BUFFER_SIZE)
         {
@@ -158,7 +162,6 @@ void send_message_body(char *file_path,int socket_fd){
     memset(out_buffer, 0, BUFFER_SIZE);
     while ((file_read_bytes = fread(file_reader_buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)
     {
-        if(feof(fp)) break;
         memcpy(out_buffer, file_reader_buffer, BUFFER_SIZE);
         int status = send(socket_fd, out_buffer, file_read_bytes, 0);
         if (status == -1)
@@ -168,12 +171,13 @@ void send_message_body(char *file_path,int socket_fd){
         }
         memset(file_reader_buffer, 0, BUFFER_SIZE);
         memset(out_buffer, 0, BUFFER_SIZE);
+        if(feof(fp)) break;
     }
-    char *end_of_file = "\r\n";
-    send(socket_fd, end_of_file, sizeof(end_of_file), 0);
+    sprintf(out_buffer,"\r\n");
+    send(socket_fd, buff,sizeof(buff), 0);
     memset(file_reader_buffer,0, BUFFER_SIZE);
     memset(out_buffer, 0, BUFFER_SIZE);
-
+    fclose(fp);
 }
 
 void read_commands(char *commands_file_path, int socket_fd)
@@ -217,7 +221,7 @@ void post_request(char *file_path, int socket_fd)
     //server either accepts or refuses
     //acceptance via HTTP OK
     //refuse via HTTP 404
-    int status = recieve_response(socket_fd);
+    int status = recieve_server_response(socket_fd);
     if(status==true){//server accepts
         send_message_body(file_path,socket_fd);
     }

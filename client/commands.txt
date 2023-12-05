@@ -1,0 +1,5 @@
+GET test.txt hostname 7777
+GET info.txt hostname 7777
+GET download.jpeg hostname 7777
+POST kimo.txt hostname 7777
+POST spooderman.png hostname 7777
